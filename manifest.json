@@ -1,11 +1,19 @@
+
 {
-  "name": "Agenda Docente - Diego Correa",
-  "short_name": "Agenda Docente",
+  "name": "Mi agenda docente",
+  "short_name": "Mi agenda",
   "description": "Seguimiento de clases DIARQ02, DIARQ03 y DIARQ04",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f3f5fa",
   "theme_color": "#26358b",
-  "icons": []
+  "icons": [
+    {
+      "src": "./icono-agenda.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }
