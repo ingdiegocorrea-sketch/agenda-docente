@@ -26,6 +26,8 @@ $('modsToggle').onclick=()=>{showAll=!showAll;renderMods()};
 ['search','program','filter'].forEach(id=>$(id).addEventListener(id==='search'?'input':'change',render));$('reset').onclick=()=>{if(confirm('¿Desmarcar todas las clases y borrar los pagos registrados?')){done={};paid={};save();render()}};$('csv').onclick=()=>{let rows=[['Fecha','Programa','Módulo','Tema','Horario','Estado','Valor (COP)'],...classes.map((c,i)=>[c.date,c.program,c.module,c.topic,'18:00-19:30',paid[mid(c)]?'Pagada':done[i]?'Dictada sin pagar':'Pendiente',Math.round(rate*H)])];let csv=rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));a.download='Seguimiento_Clases_Diego_Correa.csv';a.click();URL.revokeObjectURL(a.href)};render();
 </script><script>
 if ('serviceWorker' in navigator) {
- window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+ let hadCtrl = !!navigator.serviceWorker.controller, reloaded = false;
+ navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !reloaded) { reloaded = true; location.reload(); } });
+ window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js', {updateViaCache: 'none'}).then(r => r.update()).catch(()=>{}));
 }
 </script></body></html>
