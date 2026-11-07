@@ -2,7 +2,7 @@
   "name": "Mi agenda docente",
   "short_name": "Mi agenda",
   "description": "Agenda docente del Ing. Diego Correa Alvarado: diplomados y especialización en BIM",
-  "start_url": "./",
+  "start_url": "./?app=1",
   "scope": "./",
   "display": "standalone",
   "background_color": "#161a1b",
@@ -26,5 +26,6 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "./?app=agenda-docente"
 }
