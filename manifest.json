@@ -1,25 +1,30 @@
-
 {
   "name": "Mi agenda docente",
   "short_name": "Mi agenda",
-  "description": "Seguimiento de clases DIARQ02, DIARQ03 y DIARQ04",
+  "description": "Agenda docente del Ing. Diego Correa Alvarado: diplomados y especialización en BIM",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f3f5fa",
-  "theme_color": "#26358b",
+  "background_color": "#161a1b",
+  "theme_color": "#10097d",
   "icons": [
     {
-      "src": "./icon-192.png",
+      "src": "./qbika-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icon-512.png",
+      "src": "./qbika-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "./qbika-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
