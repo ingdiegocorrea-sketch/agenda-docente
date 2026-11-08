@@ -1,6 +1,6 @@
 {
-  "name": "Mi agenda docente",
-  "short_name": "Mi agenda",
+  "name": "QBIKA",
+  "short_name": "QBIKA",
   "description": "Agenda docente del Ing. Diego Correa Alvarado: diplomados y especialización en BIM",
   "start_url": "./?app=1",
   "scope": "./",
