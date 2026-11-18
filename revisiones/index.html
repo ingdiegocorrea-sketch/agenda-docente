@@ -288,7 +288,7 @@ label.falta{color:var(--bad)}label.falta input,label.falta select{border-color:#
     <label>Hora fin<input type="time" id="aHf"></label>
     <label>Estado<select id="aEst"></select></label>
     <label><span>Cantidad (<span id="aUni">h</span>)</span><input type="number" step="0.25" min="0" id="aCant"></label>
-    <label>Valor unitario<input type="number" step="1000" min="0" id="aVal"></label>
+    <label>Valor unitario (antes de IVA)<input type="number" step="1000" min="0" id="aVal"></label>
     <label>Cobro<select id="aCob"></select></label>
     <label>N° factura / cuenta<input id="aFac"></label>
     <label class="c2">Participantes<input id="aPart" placeholder="Contratista, supervisión, equipo interno…"></label>
@@ -362,7 +362,7 @@ label.falta{color:var(--bad)}label.falta input,label.falta select{border-color:#
 <button class="fab" onclick="openAct()" aria-label="Nueva actividad">+</button>
 <div class="toast" id="toast"></div>
 
-<script type="application/json" id="datosNube">{"proyectos":[{"id":"1r0hgm3ptwh","nombre":"Estadio Cincuentenario","codigo":"","cliente":"Fortico","color":"#2c4468","estado":"activo","tope":0,"notas":"","tarifas":{}},{"id":"vs65euesd36","nombre":"Recreo Trinidad","codigo":"","cliente":"Fortico","color":"#e8922e","estado":"activo","tope":0,"notas":"","tarifas":{}},{"id":"zynlt6h5ods","nombre":"Juan Pablo II – Fase 4","codigo":"","cliente":"Fortico","color":"#16a085","estado":"activo","tope":0,"notas":"","tarifas":{}},{"id":"yentt0ihf77","nombre":"02_Recreo Altavista","codigo":"","cliente":"Fortico","color":"#8e44ad","estado":"activo","tope":0,"notas":"","tarifas":{}},{"id":"7xg6qt65cds","nombre":"10_Recreo Cultural - El Jordán","codigo":"","cliente":"Fortico","color":"#c0392b","estado":"activo","tope":0,"notas":"","tarifas":{}}],"tipos":[{"id":"lwninvy5nho","nombre":"Comité","unidad":"hora","tarifa":0,"color":"#2e6fd1"},{"id":"1ngubdcfv5c","nombre":"Revisión de modelos","unidad":"hora","tarifa":0,"color":"#8e44ad"},{"id":"3hth36cgaa7","nombre":"Mesa interna","unidad":"hora","tarifa":0,"color":"#16a085"},{"id":"zvnlato8flp","nombre":"Mesa de trabajo con contratista","unidad":"hora","tarifa":0,"color":"#d35400"},{"id":"ioo562mgjio","nombre":"Reunión con la EDU","unidad":"hora","tarifa":0,"color":"#b7950b"},{"id":"diecq1kk8jd","nombre":"Visita a obra","unidad":"evento","tarifa":0,"color":"#c0392b"},{"id":"benfnerdt34","nombre":"Elaboración de informe / concepto","unidad":"evento","tarifa":0,"color":"#7f8c8d"}],"actividades":[{"id":"mwmn2ogexiua5","creado":1795037656910,"proyecto":"zynlt6h5ods","tipo":"lwninvy5nho","fecha":"2026-11-18","hi":"14:00","hf":"15:00","titulo":"Comité BIM","estado":"real","cobro":"pend","cantidad":1,"valor":0,"factura":"","participantes":"","soporte":"","notas":"","mod":1795037656910},{"id":"mwmn4w3h4diiv","creado":1795037760125,"proyecto":"yentt0ihf77","tipo":"3hth36cgaa7","fecha":"2026-11-19","hi":"14:00","hf":"15:00","titulo":"Mesa de trabajo - Revisiones e incidencias de la interventoría","estado":"prog","cobro":"pend","cantidad":1,"valor":0,"factura":"","participantes":"","soporte":"","notas":"Dictado: eh, una reunión interna para mañana 19 de noviembre de 2 a 3 de la tarde en donde se revisarán las revisiones y las incidencias de la interventoría.","mod":1795037940874,"proyectos":["yentt0ihf77","7xg6qt65cds"]},{"id":"mwmn6zgykyuus","creado":1795037857810,"proyecto":"zynlt6h5ods","tipo":"ioo562mgjio","fecha":"2026-11-19","hi":"15:00","hf":"15:30","titulo":"Mesa de trabajo BIM - EDU","estado":"prog","cobro":"pend","cantidad":0.5,"valor":0,"factura":"","participantes":"Entidad Juan Pablo II","soporte":"","notas":"","mod":1795037857810}]}</script>
+<script type="application/json" id="datosNube">null</script>
 <script>
 /* ===== Datos ===== */
 const KEY='control-revisiones-v1';
@@ -806,7 +806,7 @@ function interpretarLocal(txt){
   if(varios.length){varios.sort((a,b)=>b[0]-a[0]);r.proyectos=varios.map(x=>x[1]);r.proyecto=r.proyectos[0]}
   // Tipo
   const busca=(re,nom)=>{if(r.tipo)return;if(re.test(s)){const t=D.tipos.find(t=>norm(t.nombre).includes(nom));if(t)r.tipo=t.id}};
-  busca(/\bedu\b/,'edu');busca(/\bcomite\b/,'comite');busca(/\brevis\w*\b.*\bmodel/,'revision de modelos');busca(/\bmodel\w*\b/,'revision de modelos');
+  busca(/\bedu\b/,'edu');busca(/\bcomite\b|\bkick ?off\b/,'comite');busca(/\bre ?-?revis\w*\b|\bsegunda revision\b/,'re-revision');busca(/\brevis\w*\b|\bmodel\w*\b|\bfederad\w*\b|\barchivo/,'revision de archivos');
   busca(/\bmesa interna\b|\breunion interna\b/,'mesa interna');busca(/\bmesa\b.*\bcontratista\b|\bcontratista\b.*\bmesa\b/,'contratista');busca(/\bmesa\b/,'mesa interna');
   busca(/\bvisita\b|\bobra\b/,'visita');busca(/\binforme\b|\bconcepto\b/,'informe');
   if(!r.tipo)D.tipos.forEach(t=>{if(!r.tipo&&s.includes(norm(t.nombre)))r.tipo=t.id});
@@ -930,7 +930,8 @@ function renderCortes(){
   corteInfo.textContent=D.proyectos.length?`${p.nombre}${p.codigo?' · '+p.codigo:''}${p.cliente?' · '+p.cliente:''} — ${L.length} actividades`:'Crea un proyecto en «Proyectos y tarifas».';
   tCorte.innerHTML=L.length?tablaCorte(L):'<tr><td class="muted" style="text-align:center;padding:24px">No hay actividades realizadas para este corte.</td></tr>';
   if(L.length)etiquetar(tCorte);
-  corteTot.textContent='Total del corte: '+fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0));
+  const sub=L.reduce((s,a)=>s+parte(a,kProy.value),0);
+  corteTot.innerHTML=`<div style="font-weight:400;font-size:14px">Valor del corte (antes de IVA): <strong>${fmt(sub)}</strong> · IVA 19 %: <strong>${fmt(sub*0.19)}</strong></div>Total con IVA: ${fmt(sub*1.19)}`;
   saldos.innerHTML='<table><tr><th>Proyecto</th><th class="n">Causado</th><th class="n">Pendiente</th><th class="n">Facturado</th><th class="n">Pagado</th><th class="n">Tope</th><th class="n">% del tope</th></tr>'+
    D.proyectos.map(p=>{const R=ACT().filter(a=>enP(a,p.id)&&a.estado==='real');const s=f=>R.filter(f).reduce((x,a)=>x+parte(a,p.id),0);
     const tot=s(()=>true),pc=p.tope?tot/p.tope*100:null;
@@ -954,7 +955,9 @@ async function imprimirCorte(){
    <table border="1" style="border-collapse:collapse;width:100%">${tablaCorte(L,true)}</table>
    <h3>Resumen por tipo</h3><table border="1" style="border-collapse:collapse;width:60%"><tr><th>Tipo</th><th class="n">Cant.</th><th class="n">Valor</th></tr>
    ${Object.entries(porT).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${v.k}</td><td class="n">${fmt(v.v)}</td></tr>`).join('')}
-   <tr><th>Total</th><th class="n">${L.length}</th><th class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0))}</th></tr></table>
+   <tr><th>Valor del corte (antes de IVA)</th><th class="n">${L.length}</th><th class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0))}</th></tr>
+   <tr><td>IVA 19 %</td><td></td><td class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0)*0.19)}</td></tr>
+   <tr><th>TOTAL CON IVA</th><th></th><th class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0)*1.19)}</th></tr></table>
    <br><br><br><p>_______________________________<br>Ing. Diego Correa Alvarado</p>`;
   if(enClaude()){
     const doc=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Corte ${esc(p.nombre)} ${kMes.value}</title><style>body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;padding:16px;color:#1d2433}th,td{padding:5px 6px;text-align:left}.n{text-align:right}th{background:#eef1f5}.pill{font-weight:600}</style></head><body>${printArea.innerHTML}<script>setTimeout(()=>print(),400)<\/script></body></html>`;
