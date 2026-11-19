@@ -880,7 +880,7 @@ async function prepararVoz(){
   if(DIC){
     DIC.onFinal(({text})=>{vozTxt.value=(vozTxt.value?vozTxt.value+text:text.trimStart());vozParcial.textContent=''});
     DIC.onPartial(({text})=>{vozParcial.textContent=text});
-    DIC.onState(({state,reason})=>{escuchando=state!=='idle';pintarMic();
+    DIC.onState(({state,reason})=>{escuchando=state!=='idle';const prev=vozEstado.textContent;pintarMic();
       if(state==='idle'&&reason&&!['stopped','viewer_stopped','hidden'].includes(reason))vozEstado.textContent=reason==='not_granted'?'Micrófono no permitido. Usa el micrófono del teclado.':'Dictado no disponible ahora. Usa el micrófono del teclado.'});
   }
   pintarMic();
@@ -888,9 +888,10 @@ async function prepararVoz(){
 function micDisponible(){return !!DIC||!!(window.SpeechRecognition||window.webkitSpeechRecognition)}
 function pintarMic(){
   btnMic.style.display=micDisponible()?'':'none';
-  btnMic.classList.toggle('rec',escuchando);
-  btnMic.innerHTML=escuchando?'■ Detener':'🎤 Hablar';
-  vozEstado.textContent=escuchando?'Escuchando… habla con naturalidad.':(micDisponible()?'Toca «Hablar» y dicta la actividad.':'Toca el cuadro y usa el micrófono 🎤 del teclado de tu celular.');
+  const on=escuchando||(!DIC&&quiere);
+  btnMic.classList.toggle('rec',on);
+  btnMic.innerHTML=on?'■ Detener':'🎤 Hablar';
+  vozEstado.textContent=on?'Escuchando… habla con naturalidad.':(micDisponible()?'Toca «Hablar» y dicta la actividad.':'Toca el cuadro y usa el micrófono 🎤 del teclado de tu celular.');
 }
 function toggleMic(){
   if(DIC){
@@ -900,18 +901,31 @@ function toggleMic(){
     return;
   }
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
-  if(escuchando&&REC){REC.stop();return}
-  REC=new SR();REC.lang='es-CO';REC.continuous=!/Android/i.test(navigator.userAgent);REC.interimResults=true;
-  REC.onresult=e=>{let fin='',par='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t;else par+=t}
-    if(fin)vozTxt.value=(vozTxt.value?vozTxt.value.trimEnd()+' ':'')+fin.trim();vozParcial.textContent=par};
-  REC.onend=()=>{escuchando=false;vozParcial.textContent='';pintarMic()};
-  REC.onerror=e=>{escuchando=false;pintarMic();vozEstado.textContent=e.error==='not-allowed'?'Micrófono no permitido. Usa el micrófono del teclado.':'No se entendió. Intenta de nuevo o escribe.'};
-  try{REC.start();escuchando=true;pintarMic()}catch(e){}
+  if(quiere){quiere=false;const r=REC;REC=null;try{r&&r.stop()}catch(e){};escuchando=false;vozParcial.textContent='';pintarMic();return}
+  quiere=true;errVoz='';iniciarRec(SR);
 }
-function abrirVoz(){vozTxt.value='';vozParcial.textContent='';mVoz.classList.add('on');pintarMic()}
+let quiere=false,errVoz='',baseVoz='',reintentos=0;
+const MSG_VOZ={'not-allowed':'🔒 El micrófono está bloqueado para esta página. Toca el candado junto a la dirección → Permisos → Micrófono → Permitir, y recarga.',
+  'service-not-allowed':'🔒 El navegador no permite el reconocimiento de voz aquí. Usa el micrófono del teclado.',
+  'audio-capture':'🎙️ No se encontró micrófono, o lo está usando otra app (llamada, grabadora). Ciérrala e intenta de nuevo.',
+  'network':'📶 El reconocimiento de voz necesita internet. Revisa la conexión o usa el micrófono del teclado.',
+  'language-not-supported':'El idioma español no está disponible en el reconocimiento de este navegador. Usa el micrófono del teclado.'};
+function iniciarRec(SR){
+  const me=new SR();REC=me;REC.lang='es-CO';REC.continuous=false;REC.interimResults=true;REC.maxAlternatives=1;
+  baseVoz=vozTxt.value.trim();
+  REC.onstart=()=>{if(REC!==me)return;escuchando=true;reintentos=0;pintarMic()};
+  REC.onresult=e=>{if(REC!==me)return;let fin='',par='';for(let i=0;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=' '+t;else par+=' '+t}
+    fin=fin.trim();vozParcial.textContent=par.trim();if(fin)vozTxt.value=(baseVoz?baseVoz+' ':'')+fin};
+  REC.onerror=e=>{if(REC!==me)return;if(e.error==='no-speech'||e.error==='aborted')return;errVoz=MSG_VOZ[e.error]||('No se pudo usar el micrófono ('+e.error+'). Usa el micrófono del teclado.');quiere=false};
+  REC.onend=()=>{if(REC!==me)return;escuchando=false;vozParcial.textContent='';
+    if(quiere&&!errVoz&&reintentos<20){reintentos++;setTimeout(()=>{if(quiere)try{iniciarRec(SR)}catch(e){quiere=false;pintarMic()}},250);return}
+    quiere=false;pintarMic();if(errVoz)vozEstado.textContent=errVoz};
+  try{REC.start()}catch(e){quiere=false;errVoz='No se pudo iniciar el micrófono. Usa el micrófono del teclado.';pintarMic();vozEstado.textContent=errVoz}
+}
+function abrirVoz(){quiere=false;try{REC&&REC.stop()}catch(e){};vozTxt.value='';vozParcial.textContent='';mVoz.classList.add('on');pintarMic()}
 async function procesarVoz(){try{await procesarVoz2()}catch(e){toast('No se pudo interpretar; revisa los datos a mano');btnInterp.disabled=false;btnInterp.textContent='Interpretar y revisar'}}
 async function procesarVoz2(){
-  if(escuchando){try{if(DIC)await Promise.race([DIC.stop(),new Promise(r=>setTimeout(r,3000))]);else if(REC)REC.stop()}catch(e){}}
+  if(escuchando){try{if(DIC)await Promise.race([DIC.stop(),new Promise(r=>setTimeout(r,3000))]);else if(REC){quiere=false;REC.stop()}}catch(e){}}
   const txt=vozTxt.value.trim();if(!txt){toast('Dicta o escribe la actividad');return}
   btnInterp.disabled=true;btnInterp.textContent='Interpretando…';
   const loc=interpretarLocal(txt);
