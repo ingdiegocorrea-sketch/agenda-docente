@@ -154,6 +154,9 @@ nav button.on{border-bottom-color:var(--acc)}
 footer{color:#aebbd0}footer strong{color:#fff}
 .fab2{border:2px solid rgba(255,255,255,.85)!important}
 main>.row.card,main .card,.kpi{box-shadow:0 2px 10px rgba(0,0,0,.18);border-color:transparent}
+.repbox{display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px;background:#f3f7fc;border-radius:8px;padding:8px 10px}
+@media(max-width:700px){.repbox{grid-template-columns:1fr 1fr}.repbox #repInfo{grid-column:span 2}}
+.p-serie{background:#eaf1fb;color:var(--pri2)}
 </style>
 </head>
 <body>
@@ -308,6 +311,11 @@ main>.row.card,main .card,.kpi{box-shadow:0 2px 10px rgba(0,0,0,.18);border-colo
     <label>Valor unitario (antes de IVA)<input type="number" step="1000" min="0" id="aVal"></label>
     <label>Cobro<select id="aCob"></select></label>
     <label>N° factura / cuenta<input id="aFac"></label>
+    <div class="c4 repbox" id="repBox">
+      <label>🔁 ¿Se repite?<select id="aRep"><option value="">No se repite</option><option value="7">Cada semana (cada 8 días)</option><option value="14">Cada 2 semanas</option><option value="m">Cada mes</option></select></label>
+      <label id="lblHasta" style="display:none">Hasta<input type="date" id="aHasta"></label>
+      <div id="repInfo" class="muted" style="font-size:12px;align-self:end"></div>
+    </div>
     <label class="c2">Participantes<input id="aPart" placeholder="Contratista, supervisión, equipo interno…"></label>
     <label class="c2">Soporte / entregable<input id="aSop" placeholder="Acta, informe, enlace al CDE…"></label>
     <label class="c4">Notas<textarea id="aNot"></textarea></label>
@@ -316,6 +324,7 @@ main>.row.card,main .card,.kpi{box-shadow:0 2px 10px rgba(0,0,0,.18);border-colo
     <div class="total-box">Total: <strong id="aTot">$0</strong></div>
     <button class="btn bad sm" id="aDel" onclick="delAct()">Anular</button>
     <button class="btn sec sm" id="aBorrar" onclick="borrarAct()" style="color:var(--bad);border-color:#f0c9c4">🗑 Eliminar</button>
+    <button class="btn sec sm" id="aBorrarSerie" onclick="borrarAct(true)" style="color:var(--bad);border-color:#f0c9c4;display:none">🗑 Eliminar esta y las siguientes</button>
     <button class="btn sec sm" id="aDup" onclick="dupAct()">Duplicar</button>
     <span class="right"></span>
     <button class="btn sec" onclick="closeM('mAct')">Cancelar</button>
@@ -704,7 +713,7 @@ function renderActs(){
     <td style="white-space:nowrap">${fFecha(a.fecha)}</td><td style="white-space:nowrap">${a.hi||''}${a.hf?'–'+a.hf:''}</td>
     <td>${PS(a).map(id=>`<div><span class="dot" style="background:${P(id).color}"></span>${esc(P(id).nombre)}</div>`).join('')}${PS(a).length>1?`<div class="muted" style="font-size:11px">Compartida: ${fmt(totalA(a)/PS(a).length)} c/u</div>`:''}</td>
     <td><span class="dot" style="background:${T(a.tipo).color}"></span>${esc(T(a.tipo).nombre)}</td>
-    <td>${esc(a.titulo)}${a.soporte?`<div class="muted" style="font-size:12px">${esc(a.soporte)}</div>`:''}</td>
+    <td>${esc(a.titulo)}${a.serie?` <span class="pill p-serie">🔁 ${NOM_REP[a.rep]||'periódica'}</span>`:''}${a.soporte?`<div class="muted" style="font-size:12px">${esc(a.soporte)}</div>`:''}</td>
     <td>${a.estado==='canc'||a.anulada?`<span class="pill p-${a.estado}">${ESTADOS[a.estado]}</span>`:
       `<button class="ejec ${a.estado==='real'?'si':''}" onclick="event.stopPropagation();toggleEjec('${a.id}')" title="Marca si la actividad ya se ejecutó">${a.estado==='real'?'✓ Ejecutada':'○ ¿Ejecutada?'}</button>`}${esVencida(a)?'<div><span class="pill p-venc">Vencida: ¿se realizó?</span></div>':''}${a.estado==='real'&&a.cobro==='pend'&&!a.anulada&&totalA(a)>0?'<div><span class="pill p-carrito">🛒 Por facturar</span></div>':''}</td>
     <td class="n">${fmt(a.valor)}</td><td class="n"><strong>${fmt(totalA(a))}</strong></td><td class="n"><button class="btn sec sm" title="Eliminar" aria-label="Eliminar" onclick="event.stopPropagation();editA=D.actividades.find(x=>x.id==='${a.id}');borrarAct()">🗑</button></td></tr>`).join('')
@@ -739,6 +748,8 @@ function openAct(id,fecha,pre){
   }
   if(!editA){const h=horasDe(aHi.value,aHf.value);aCant.value=T(aTipo.value).unidad==='evento'?1:(h??'');aVal.value=tarifa(aProy.value,aTipo.value)}
   marcarFaltantes(pre);
+  aRep.value=(pre&&pre.rep)||'';aHasta.value=(pre&&pre.hasta)||'';actualizarRep();
+  aBorrarSerie.style.display=editA&&editA.serie&&D.actividades.some(x=>x.serie===editA.serie&&!x.eliminada&&x.fecha>editA.fecha)?'':'none';
   aDel.style.display=aDup.style.display=aBorrar.style.display=editA?'':'none';
   aDel.textContent=editA&&editA.anulada?'Restaurar':'Anular';aDel.className='btn sm '+(editA&&editA.anulada?'ok':'bad');
   updUni();calcTot();mAct.classList.add('on');aTit.focus();
@@ -768,6 +779,19 @@ aTipo.onchange=()=>{updUni();aVal.value=tarifa(aProy.value,aTipo.value);
   if(T(aTipo.value).unidad==='evento')aCant.value=1;else{const h=horasDe(aHi.value,aHf.value);aCant.value=h??''}calcTot()};
 aHi.oninput=aHf.oninput=()=>{if(T(aTipo.value).unidad==='hora'){const h=horasDe(aHi.value,aHf.value);if(h!==null)aCant.value=h}calcTot()};
 [aCant,aVal,aEst,aCob].forEach(e=>e.addEventListener('input',()=>{calcTot();notaProys()}));
+function sumarFecha(iso,paso,n){const[y,m,d]=iso.split('-').map(Number);let dt;
+  if(paso==='m'){dt=new Date(y,m-1+n,d);if(dt.getDate()!==d)dt=new Date(y,m+n,0)}else dt=new Date(y,m-1,d+(+paso)*n);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`}
+function fechasSerie(desde,paso,hasta){const out=[];for(let n=1;n<=104;n++){const f=sumarFecha(desde,paso,n);if(f>hasta)break;out.push(f)}return out}
+const NOM_REP={'7':'semanal','14':'cada 2 semanas','m':'mensual'};
+function actualizarRep(){
+  const r=aRep.value;lblHasta.style.display=r?'':'none';
+  if(r&&!aHasta.value){const[y]=aFecha.value?aFecha.value.split('-'):[new Date().getFullYear()];aHasta.value=sumarFecha(aFecha.value||hoyISO(),'m',3)}
+  const ser=editA&&editA.serie;
+  if(ser&&!r){repInfo.textContent='Esta actividad hace parte de una serie '+(NOM_REP[editA.rep]||'')+'. Los cambios aplican solo a esta fecha.';return}
+  repInfo.textContent=r&&aFecha.value&&aHasta.value?(ser?'Ya es parte de una serie; solo se agregarán las fechas que falten.':`Se crearán ${fechasSerie(aFecha.value,r,aHasta.value).length} repeticiones más, hasta el ${fFecha(aHasta.value)}.`):'';
+}
+aRep.addEventListener('change',actualizarRep);aHasta.addEventListener('input',actualizarRep);aFecha.addEventListener('input',actualizarRep);
 function saveAct(){
   if(!aFecha.value){toast('Indica la fecha');return}
   const ids=getProys();if(!ids.length){toast('Marca al menos un proyecto');lblProy.classList.add('falta');return}
@@ -775,13 +799,25 @@ function saveAct(){
     cantidad:+aCant.value||0,valor:+aVal.value||0,factura:aFac.value.trim(),participantes:aPart.value.trim(),soporte:aSop.value.trim(),notas:aNot.value.trim()};
   o.mod=Date.now();
   let nueva;if(editA)Object.assign(editA,o);else{nueva={id:uid(),creado:Date.now(),...o};D.actividades.push(nueva)}
+  const base=editA||nueva;let creadas=0;
+  if(aRep.value&&aHasta.value&&aHasta.value>base.fecha){
+    const serie=base.serie||uid();base.serie=serie;base.rep=aRep.value;
+    const ya=new Set(D.actividades.filter(x=>x.serie===serie&&!x.eliminada).map(x=>x.fecha));
+    fechasSerie(base.fecha,aRep.value,aHasta.value).forEach(fe=>{if(ya.has(fe))return;
+      D.actividades.push({...JSON.parse(JSON.stringify(base)),id:uid(),creado:Date.now(),mod:Date.now(),fecha:fe,estado:'prog',cobro:'pend',factura:'',anulada:false,serie,rep:aRep.value});creadas++});
+  }
   save();closeM('mAct');
   const g=editA||nueva;
   if(document.getElementById('t-actividades').classList.contains('on')&&!filtradas().includes(g)){vista='todas';limpiarFiltros()}
-  render();toast(g.estado==='prog'?`Guardada: ${fFecha(g.fecha)} · pendiente por realizar`:'Actividad guardada');
+  render();toast(creadas?`Guardada y repetida ${NOM_REP[aRep.value]}: ${creadas} fechas más hasta el ${fFecha(aHasta.value)}`:g.estado==='prog'?`Guardada: ${fFecha(g.fecha)} · pendiente por realizar`:'Actividad guardada');
 }
-async function borrarAct(){
+async function borrarAct(serie){
   if(!editA)return;
+  if(serie===true&&editA.serie){
+    const L=D.actividades.filter(x=>x.serie===editA.serie&&!x.eliminada&&x.fecha>=editA.fecha);
+    if(!await confirmar(`¿Eliminar esta y las siguientes de la serie?\n${L.length} actividades desde el ${fFecha(editA.fecha)}.\nLas fechas anteriores se conservan.`))return;
+    L.forEach(a=>{const i=D.actividades.indexOf(a);D.actividades[i]={id:a.id,eliminada:true,mod:Date.now(),proyecto:a.proyecto,tipo:a.tipo,fecha:a.fecha,titulo:''}});
+    save();closeM('mAct');render();toast(`${L.length} actividades eliminadas`);return}
   const desc=`${fFecha(editA.fecha)} · ${T(editA.tipo).nombre} · ${editA.titulo||''}`;
   if(!await confirmar(`¿Eliminar definitivamente esta actividad?\n${desc}\n\nDesaparece de la lista, del calendario y de los cortes, en todos tus equipos. Si solo quieres sacarla del cobro, usa «Anular».`))return;
   const id=editA.id,i=D.actividades.indexOf(editA);
@@ -794,7 +830,7 @@ async function delAct(){
   if(!await confirmar('¿Anular esta actividad? No se borra: queda en la vista «Anuladas» y la puedes restaurar cuando quieras.'))return;
   editA.anulada=true;editA.mod=Date.now();save();closeM('mAct');render();toast('Actividad anulada (recuperable)')
 }
-function dupAct(){if(!editA)return;const c={...editA,anulada:false,mod:Date.now(),creado:Date.now(),id:uid(),estado:'prog',cobro:'pend',factura:''};D.actividades.push(c);save();openAct(c.id);toast('Duplicada: ajusta la fecha')}
+function dupAct(){if(!editA)return;const c={...editA,serie:undefined,rep:undefined,anulada:false,mod:Date.now(),creado:Date.now(),id:uid(),estado:'prog',cobro:'pend',factura:''};D.actividades.push(c);save();openAct(c.id);toast('Duplicada: ajusta la fecha')}
 
 /* ===== Dictado por voz ===== */
 const NUM={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,diecisiete:17,dieciocho:18,diecinueve:19,veinte:20,veintiuno:21,veintidos:22,veintitres:23,veinticuatro:24,veinticinco:25,veintiseis:26,veintisiete:27,veintiocho:28,veintinueve:29,treinta:30,treintayuno:31};
@@ -807,18 +843,19 @@ function numTxt(s){s=s.replace(/treinta y uno/g,'treintayuno');return s.replace(
 function interpretarLocal(txt){
   const r={};let s=numTxt(norm(txt));
   const hoy=new Date();hoy.setHours(12,0,0,0);
-  // Fecha
+  // Fecha (sin la parte «hasta …» de las repeticiones)
+  const sF=s.replace(/\bhasta (?:el )?\d{1,2}\s*(?:de\s+)?[a-z]+(?:\s+(?:de|del)?\s*\d{4})?/,' ');
   let m;
-  if((m=s.match(/\b(\d{1,2})\s*(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s+(?:de|del)?\s*(\d{4}))?/))){
+  if((m=sF.match(/\b(\d{1,2})\s*(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s+(?:de|del)?\s*(\d{4}))?/))){
     const y=m[3]?+m[3]:hoy.getFullYear();r.fecha=iso(new Date(y,MESN[m[2]]-1,+m[1]));
-  } else if((m=s.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/))){
+  } else if((m=sF.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/))){
     let y=m[3]?+m[3]:hoy.getFullYear();if(y<100)y+=2000;r.fecha=iso(new Date(y,+m[2]-1,+m[1]));
-  } else if(/\bpasado manana\b/.test(s)){const d=new Date(hoy);d.setDate(d.getDate()+2);r.fecha=iso(d)}
-  else if(/\bmanana\b/.test(s.replace(/\b(de|en|por) la manana\b/g,''))){const d=new Date(hoy);d.setDate(d.getDate()+1);r.fecha=iso(d)}
-  else if(/\bayer\b/.test(s)){const d=new Date(hoy);d.setDate(d.getDate()-1);r.fecha=iso(d)}
-  else if(/\bhoy\b/.test(s)){r.fecha=iso(hoy)}
-  else if((m=s.match(/\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/))){const d=new Date(hoy);let k=(DIAS[m[1]]-d.getDay()+7)%7;if(k===0)k=7;if(/\b(pasado|anterior)\b/.test(s))k-=7;d.setDate(d.getDate()+k);r.fecha=iso(d)}
-  else if((m=s.match(/\bel (?:dia )?(\d{1,2})\b(?!\s*(?:y|:|a las|de la))/))){const d=new Date(hoy.getFullYear(),hoy.getMonth(),+m[1]);r.fecha=iso(d)}
+  } else if(/\bpasado manana\b/.test(sF)){const d=new Date(hoy);d.setDate(d.getDate()+2);r.fecha=iso(d)}
+  else if(/\bmanana\b/.test(sF.replace(/\b(de|en|por) la manana\b/g,''))){const d=new Date(hoy);d.setDate(d.getDate()+1);r.fecha=iso(d)}
+  else if(/\bayer\b/.test(sF)){const d=new Date(hoy);d.setDate(d.getDate()-1);r.fecha=iso(d)}
+  else if(/\bhoy\b/.test(sF)){r.fecha=iso(hoy)}
+  else if((m=sF.match(/\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/))){const d=new Date(hoy);let k=(DIAS[m[1]]-d.getDay()+7)%7;if(k===0)k=7;if(/\b(pasado|anterior)\b/.test(sF))k-=7;d.setDate(d.getDate()+k);r.fecha=iso(d)}
+  else if((m=sF.match(/\bel (?:dia )?(\d{1,2})\b(?!\s*(?:y|:|a las|de la))/))){const d=new Date(hoy.getFullYear(),hoy.getMonth(),+m[1]);r.fecha=iso(d)}
   // Horas
   const per=(/\b(de la tarde|en la tarde|por la tarde|pm|p m)\b/.test(s)?'pm':/\b(de la noche|en la noche)\b/.test(s)?'noche':/\b(de la manana|en la manana|am|a m)\b/.test(s)?'am':'');
   const hora=(h,mi,extra)=>{h=+h;mi=mi?+mi:0;if(extra==='media')mi=30;if(extra==='cuarto')mi=15;
@@ -845,6 +882,12 @@ function interpretarLocal(txt){
   busca(/\bmesa interna\b|\breunion interna\b/,'mesa interna');busca(/\bmesa\b.*\bcontratista\b|\bcontratista\b.*\bmesa\b/,'contratista');busca(/\bmesa\b/,'mesa interna');
   busca(/\bvisita\b|\bobra\b/,'visita');busca(/\binforme\b|\bconcepto\b/,'informe');
   if(!r.tipo)D.tipos.forEach(t=>{if(!r.tipo&&s.includes(norm(t.nombre)))r.tipo=t.id});
+  // Repetición
+  if(/\bcada (8|ocho) dias\b|\bsemanal\w*\b|\bcada semana\b|\btodos los (lunes|martes|miercoles|jueves|viernes)\b/.test(s))r.rep='7';
+  else if(/\bcada (15|quince) dias\b|\bcada (2|dos) semanas\b|\bquincenal\w*\b/.test(s))r.rep='14';
+  else if(/\bcada mes\b|\bmensual\w*\b/.test(s))r.rep='m';
+  if(r.rep&&(m=s.match(/\bhasta (?:el )?(\d{1,2})\s*(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s+(?:de|del)?\s*(\d{4}))?/))){
+    const y=m[3]?+m[3]:hoy.getFullYear();r.hasta=iso(new Date(y,MESN[m[2]]-1,+m[1]))}
   // Estado
   if(/\b(realice|hice|tuve|asisti|revise|participe|estuve|fue|se realizo)\b/.test(s))r.estado='real';
   else if(/\b(realizare|hare|tendre|voy a|vamos a|asistire|revisare|participare|programar|agendar|sera)\b/.test(s)||(r.fecha&&r.fecha>hoyISO()))r.estado='prog';
