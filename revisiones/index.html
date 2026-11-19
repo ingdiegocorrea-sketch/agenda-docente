@@ -547,7 +547,7 @@ function renderGH(){
   const el=document.getElementById('ghBox');if(!el)return;
   el.innerHTML=GH?`<p style="margin:0 0 10px">Conectado a <strong>${esc(GH.repo)}</strong> (archivo ${esc(GH.path)}). Todo lo que registres en este equipo se guarda allí y aparece en tus otros equipos conectados.</p><button class="btn sec sm" onclick="ghIniciar()">Sincronizar ahora</button> <button class="btn bad sm" onclick="ghDesconectar()">Desconectar este equipo</button>`
   :`<p class="muted" style="margin-top:0;font-size:12px">Para ver lo mismo en el celular y el computador sin iniciar sesión en Claude: crea un repositorio <strong>privado</strong> en GitHub (por ejemplo <em>revisiones-datos</em>) y un token «fine-grained» con permiso <em>Contents: Read and write</em> solo para ese repositorio. Pégalos aquí en cada equipo una sola vez. El token queda guardado solo en este navegador.</p>
-   <div class="row"><label style="flex:1 1 200px">Repositorio privado<input id="ghRepo" placeholder="ingdiegocorrea-sketch/revisiones-datos"></label><label style="flex:2 1 260px">Token<input id="ghToken" type="password" placeholder="github_pat_…"></label><button class="btn ok" onclick="ghConectar()">Conectar</button></div>`;
+   <div class="row"><label style="flex:1 1 200px">Repositorio privado<input id="ghRepo" value="ingdiegocorrea-sketch/revisiones-datos"></label><label style="flex:2 1 260px">Token<input id="ghToken" type="password" placeholder="github_pat_…"></label><button class="btn ok" onclick="ghConectar()">Conectar</button></div>`;
 }
 async function iniciarNube(){
   if(!await esperarClaude()){if(GH)await ghIniciar();else setSync('Guardado solo en este dispositivo','');return}
