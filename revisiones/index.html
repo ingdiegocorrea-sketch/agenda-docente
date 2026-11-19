@@ -614,7 +614,7 @@ function refreshSelects(){
   const pr=D.proyectos.map(p=>[p.id,p.nombre+(p.estado==='cerrado'?' (cerrado)':'')]);
   const ti=D.tipos.map(t=>[t.id,t.nombre]);
   ['rProy','fProy','cProy'].forEach(id=>fillSel(document.getElementById(id),pr,'Todos'));
-  fillSel(document.getElementById('kProy'),pr);
+  fillSel(document.getElementById('kProy'),pr,'Todos los proyectos');
   fillSel(document.getElementById('fTipo'),ti,'Todos');
   fillSel(document.getElementById('fEst'),Object.entries(ESTADOS),'Todos');
   fillSel(document.getElementById('fCob'),Object.entries(COBROS),'Todos');
@@ -945,19 +945,21 @@ function renderCal(){
 /* ===== Cortes ===== */
 function corteLista(){
   const pid=kProy.value,mes=kMes.value,inc=kInc.value;
-  return ACT().filter(a=>enP(a,pid)&&a.estado==='real'&&a.cobro!=='nc'&&(!mes||a.fecha.slice(0,7)===mes)&&(inc==='todas'||a.cobro==='pend'))
+  return ACT().filter(a=>(!pid||enP(a,pid))&&a.estado==='real'&&a.cobro!=='nc'&&(!mes||a.fecha.slice(0,7)===mes)&&(inc==='todas'||a.cobro==='pend'))
     .sort((a,b)=>(a.fecha+(a.hi||'')).localeCompare(b.fecha+(b.hi||'')));
 }
 function etiquetar(t){const hs=[...t.rows[0].cells].map(c=>c.textContent);[...t.rows].slice(1).forEach(r=>[...r.cells].forEach((c,i)=>{if(!c.colSpan||c.colSpan===1){c.dataset.l=hs[i]||'';c.classList.toggle('vacio',!c.textContent.trim())}}))}
 function tablaCorte(L,print){
-  return `<tr><th>#</th><th>Fecha</th><th>Horario</th><th>Tipo</th><th>Descripción</th><th>Soporte</th>${print?'':'<th>Cobro</th>'}<th class="n">Cant.</th><th class="n">V. unit.</th><th class="n">Total</th></tr>`+
-   L.map((a,i)=>`<tr><td>${i+1}</td><td style="white-space:nowrap">${fFecha(a.fecha)}</td><td style="white-space:nowrap">${a.hi||''}${a.hf?'–'+a.hf:''}</td><td>${esc(T(a.tipo).nombre)}</td><td>${esc(a.titulo)}${PS(a).length>1?`<div style="font-size:11px;color:#6b7385">Compartida con: ${esc(PS(a).filter(id=>id!==kProy.value).map(id=>P(id).nombre).join(', '))} (1/${PS(a).length})</div>`:''}</td><td>${esc(a.soporte)}</td>${print?'':`<td><span class="pill p-${a.cobro}">${COBROS[a.cobro]}</span></td>`}
+  const todos=!kProy.value;
+  return `<tr><th>#</th><th>Fecha</th><th>Horario</th>${todos?'<th>Proyecto(s)</th>':''}<th>Tipo</th><th>Descripción</th><th>Soporte</th>${print?'':'<th>Cobro</th>'}<th class="n">Cant.</th><th class="n">V. unit.</th><th class="n">Total</th></tr>`+
+   L.map((a,i)=>`<tr><td>${i+1}</td><td style="white-space:nowrap">${fFecha(a.fecha)}</td><td style="white-space:nowrap">${a.hi||''}${a.hf?'–'+a.hf:''}</td>${todos?`<td>${PS(a).map(id=>esc(P(id).nombre)).join('<br>')}</td>`:''}<td>${esc(T(a.tipo).nombre)}</td><td>${esc(a.titulo)}${!todos&&PS(a).length>1?`<div style="font-size:11px;color:#6b7385">Compartida con: ${esc(PS(a).filter(id=>id!==kProy.value).map(id=>P(id).nombre).join(', '))} (1/${PS(a).length})</div>`:''}</td><td>${esc(a.soporte)}</td>${print?'':`<td><span class="pill p-${a.cobro}">${COBROS[a.cobro]}</span></td>`}
    <td class="n">${fmtH(a.cantidad)} ${T(a.tipo).unidad==='hora'?'h':'ev'}</td><td class="n">${fmt(a.valor)}</td><td class="n">${fmt(parte(a,kProy.value))}</td></tr>`).join('');
 }
 function renderCortes(){
   if(!kMes.value)kMes.value=hoyISO().slice(0,7);
   const L=corteLista(),p=P(kProy.value);
-  corteInfo.textContent=D.proyectos.length?`${p.nombre}${p.codigo?' · '+p.codigo:''}${p.cliente?' · '+p.cliente:''} — ${L.length} actividades`:'Crea un proyecto en «Proyectos y tarifas».';
+  if(!kProy.value)corteInfo.textContent=`Todos los proyectos — ${L.length} actividades (las compartidas se cuentan una sola vez, por su valor completo)`;
+  else corteInfo.textContent=D.proyectos.length?`${p.nombre}${p.codigo?' · '+p.codigo:''}${p.cliente?' · '+p.cliente:''} — ${L.length} actividades`:'Crea un proyecto en «Proyectos y tarifas».';
   tCorte.innerHTML=L.length?tablaCorte(L):'<tr><td class="muted" style="text-align:center;padding:24px">No hay actividades realizadas para este corte.</td></tr>';
   if(L.length)etiquetar(tCorte);
   const sub=L.reduce((s,a)=>s+parte(a,kProy.value),0);
@@ -980,9 +982,11 @@ async function imprimirCorte(){
   const [y,m]=(kMes.value||'').split('-');
   const porT={};L.forEach(a=>{const k=T(a.tipo).nombre;porT[k]=porT[k]||{k:0,v:0};porT[k].k++;porT[k].v+=parte(a,kProy.value)});
   printArea.innerHTML=`<img src="${LOGO()}" style="height:70px;float:right"><h2 style="margin:0">Relación de actividades adicionales</h2>
-   <p><strong>Proyecto:</strong> ${esc(p.nombre)}${p.codigo?' · <strong>Contrato:</strong> '+esc(p.codigo):''}${p.cliente?' · <strong>Cliente:</strong> '+esc(p.cliente):''}<br>
+   <p>${kProy.value?`<strong>Proyecto:</strong> ${esc(p.nombre)}${p.codigo?' · <strong>Contrato:</strong> '+esc(p.codigo):''}${p.cliente?' · <strong>Cliente:</strong> '+esc(p.cliente):''}`:`<strong>Proyectos:</strong> todos${[...new Set(D.proyectos.map(x=>x.cliente).filter(Boolean))].length===1?' · <strong>Cliente:</strong> '+esc(D.proyectos[0].cliente):''}${[...new Set(D.proyectos.map(x=>x.codigo).filter(Boolean))].length===1?' · <strong>Contrato:</strong> '+esc(D.proyectos[0].codigo):''}`}<br>
    <strong>Periodo:</strong> ${m?MESES[+m-1]+' de '+y:'Todo'} · <strong>Elaborado por:</strong> Ing. Diego Correa Alvarado · BIMP · <strong>Fecha:</strong> ${fFecha(hoyISO())}</p>
    <table border="1" style="border-collapse:collapse;width:100%">${tablaCorte(L,true)}</table>
+   ${kProy.value?'':(()=>{const pp={};L.forEach(a=>PS(a).forEach(id=>{pp[id]=(pp[id]||0)+totalA(a)/PS(a).length}));
+     return `<h3>Resumen por proyecto</h3><table border="1" style="border-collapse:collapse;width:60%"><tr><th>Proyecto</th><th class="n">Valor (antes de IVA)</th></tr>${Object.entries(pp).map(([id,v])=>`<tr><td>${esc(P(id).nombre)}</td><td class="n">${fmt(v)}</td></tr>`).join('')}</table>`})()}
    <h3>Resumen por tipo</h3><table border="1" style="border-collapse:collapse;width:60%"><tr><th>Tipo</th><th class="n">Cant.</th><th class="n">Valor</th></tr>
    ${Object.entries(porT).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${v.k}</td><td class="n">${fmt(v.v)}</td></tr>`).join('')}
    <tr><th>Valor del corte (antes de IVA)</th><th class="n">${L.length}</th><th class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0))}</th></tr>
@@ -990,8 +994,8 @@ async function imprimirCorte(){
    <tr><th>TOTAL CON IVA</th><th></th><th class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0)*1.19)}</th></tr></table>
    <br><br><br><p>_______________________________<br>Ing. Diego Correa Alvarado</p>`;
   if(enClaude()){
-    const doc=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Corte ${esc(p.nombre)} ${kMes.value}</title><style>body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;padding:16px;color:#1d2433}th,td{padding:5px 6px;text-align:left}.n{text-align:right}th{background:#eef1f5}.pill{font-weight:600}</style></head><body>${printArea.innerHTML}<script>setTimeout(()=>print(),400)<\/script></body></html>`;
-    await guardarArchivo(`corte-${p.nombre.replace(/[^\w\-]+/g,'_')}-${kMes.value||'todo'}.html`,doc,'text/html');
+    const doc=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Corte ${kProy.value?esc(p.nombre):'todos los proyectos'} ${kMes.value}</title><style>body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;padding:16px;color:#1d2433}th,td{padding:5px 6px;text-align:left}.n{text-align:right}th{background:#eef1f5}.pill{font-weight:600}</style></head><body>${printArea.innerHTML}<script>setTimeout(()=>print(),400)<\/script></body></html>`;
+    await guardarArchivo(`corte-${(kProy.value?p.nombre:'todos').replace(/[^\w\-]+/g,'_')}-${kMes.value||'todo'}.html`,doc,'text/html');
   } else window.print();
 }
 
