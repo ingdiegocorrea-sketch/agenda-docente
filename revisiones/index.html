@@ -139,6 +139,12 @@ label.falta{color:var(--bad)}label.falta input,label.falta select{border-color:#
 .pchk input{width:auto!important;margin:0 2px 0 0}
 .pchk.on{border-color:var(--pri2);background:#eaf1fb;font-weight:600}
 .lbl.falta .multi .pchk{border-color:#e8922e;background:#fff8ef}
+.ejec{border:1px solid var(--line);background:#fff;border-radius:20px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--muted);white-space:nowrap}
+.ejec:hover{border-color:var(--ok);color:var(--ok)}
+.ejec.si{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:600}
+.p-carrito{background:#fff1e0;color:#b4610c;margin-top:4px}
+.carrito{background:var(--acc);color:#fff;border:0;border-radius:20px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+@media(max-width:700px){.carrito{font-size:11px;padding:5px 9px}header .sync{font-size:10px;padding:3px 7px;max-width:90px;overflow:hidden;text-overflow:ellipsis}header{flex-wrap:wrap}}
 </style>
 </head>
 <body>
@@ -149,6 +155,7 @@ label.falta{color:var(--bad)}label.falta input,label.falta select{border-color:#
     <div class="sub">Comités · revisiones de modelos · mesas internas · actividades adicionales</div>
   </div>
   <div class="sp"></div>
+  <button id="carrito" class="carrito" onclick="verCarrito()"></button>
   <span id="sync" class="sync"></span>
   <button class="btn sec" id="btnVoz" onclick="abrirVoz()" style="background:#fff">🎤 Dictar</button>
   <button class="btn acc" id="btnNueva" onclick="openAct()">+ Nueva actividad</button>
@@ -631,7 +638,7 @@ function renderResumen(){
   kpis.innerHTML=[
     ['Actividades realizadas',R.length,fmtH(horas)+' h registradas'],
     ['Valor causado',fmt(tot),'realizadas y cobrables'],
-    ['Pendiente por facturar',fmt(pend),R.filter(a=>a.cobro==='pend').length+' actividades'],
+    ['🛒 Por facturar (ejecutadas)',fmt(pend),R.filter(a=>a.cobro==='pend').length+' actividades'],
     ['Facturado (por pagar)',fmt(fact),R.filter(a=>a.cobro==='fact').length+' actividades'],
     ['Pagado',fmt(pag),R.filter(a=>a.cobro==='pag').length+' actividades'],
     ['Programadas',prog.length,'estimado '+fmt(progV)]
@@ -658,7 +665,7 @@ const VISTAS=[
   ['pend','Pendientes',a=>a.estado==='prog'||(a.estado==='real'&&a.cobro==='pend')],
   ['prog','Por realizar',a=>a.estado==='prog'],
   ['venc','Vencidas sin cerrar',a=>esVencida(a)],
-  ['cobrar','Realizadas por facturar',a=>a.estado==='real'&&a.cobro==='pend'],
+  ['cobrar','🛒 Por facturar',a=>a.estado==='real'&&a.cobro==='pend'],
   ['fact','Facturadas por pagar',a=>a.estado==='real'&&a.cobro==='fact'],
   ['pag','Pagadas',a=>a.cobro==='pag'],
   ['canc','Canceladas',a=>a.estado==='canc'],
@@ -681,13 +688,14 @@ function filtradas(){
 function renderActs(){
   vistas.innerHTML=VISTAS.map(v=>`<button class="chip ${v[0]===vista?'on':''}" onclick="setVista('${v[0]}')">${v[1]}<b>${(v[0]==='anul'?VIVAS():ACT()).filter(v[2]).length}</b></button>`).join('');
   const L=filtradas();
-  tAct.innerHTML=`<tr><th>Fecha</th><th>Horario</th><th>Proyecto</th><th>Tipo</th><th>Título / soporte</th><th>Estado</th><th>Cobro</th><th class="n">Cant.</th><th class="n">V. unit.</th><th class="n">Total</th><th></th></tr>`+
+  tAct.innerHTML=`<tr><th>Fecha</th><th>Horario</th><th>Proyecto</th><th>Tipo</th><th>Título / soporte</th><th>¿Ejecutada?</th><th>Cobro</th><th class="n">Cant.</th><th class="n">V. unit.</th><th class="n">Total</th><th></th></tr>`+
    (L.length?L.map(a=>`<tr class="${esVencida(a)?'venc':''}" style="cursor:pointer" onclick="openAct('${a.id}')">
     <td style="white-space:nowrap">${fFecha(a.fecha)}</td><td style="white-space:nowrap">${a.hi||''}${a.hf?'–'+a.hf:''}</td>
     <td>${PS(a).map(id=>`<div><span class="dot" style="background:${P(id).color}"></span>${esc(P(id).nombre)}</div>`).join('')}${PS(a).length>1?`<div class="muted" style="font-size:11px">Compartida: ${fmt(totalA(a)/PS(a).length)} c/u</div>`:''}</td>
     <td><span class="dot" style="background:${T(a.tipo).color}"></span>${esc(T(a.tipo).nombre)}</td>
     <td>${esc(a.titulo)}${a.soporte?`<div class="muted" style="font-size:12px">${esc(a.soporte)}</div>`:''}</td>
-    <td><span class="pill p-${a.estado}">${ESTADOS[a.estado]}</span>${esVencida(a)?'<div><span class="pill p-venc">Vencida: ¿se realizó?</span></div>':''}</td>
+    <td>${a.estado==='canc'||a.anulada?`<span class="pill p-${a.estado}">${ESTADOS[a.estado]}</span>`:
+      `<button class="ejec ${a.estado==='real'?'si':''}" onclick="event.stopPropagation();toggleEjec('${a.id}')" title="Marca si la actividad ya se ejecutó">${a.estado==='real'?'✓ Ejecutada':'○ ¿Ejecutada?'}</button>`}${esVencida(a)?'<div><span class="pill p-venc">Vencida: ¿se realizó?</span></div>':''}${a.estado==='real'&&a.cobro==='pend'&&!a.anulada&&totalA(a)>0?'<div><span class="pill p-carrito">🛒 Por facturar</span></div>':''}</td>
     <td><span class="pill p-${a.cobro}">${COBROS[a.cobro]}</span>${a.factura?`<div class="muted" style="font-size:11px">${esc(a.factura)}</div>`:''}</td>
     <td class="n">${fmtH(a.cantidad)} ${T(a.tipo).unidad==='hora'?'h':'ev'}</td><td class="n">${fmt(a.valor)}</td><td class="n"><strong>${fmt(totalA(a))}</strong></td><td class="n"><button class="btn sec sm" title="Eliminar" aria-label="Eliminar" onclick="event.stopPropagation();editA=D.actividades.find(x=>x.id==='${a.id}');borrarAct()">🗑</button></td></tr>`).join('')
    :`<tr><td colspan="11" class="muted" style="text-align:center;padding:24px">${D.actividades.length?'Ninguna actividad coincide con esta vista o filtros. <a href="#" onclick="limpiarFiltros();setVista(\'todas\');return false">Ver todas</a>':'No hay actividades. Usa «+ Nueva actividad».'}</td></tr>`);
@@ -709,7 +717,7 @@ function openAct(id,fecha,pre){
   aProys.innerHTML=visibles.map(p=>`<label class="pchk"><input type="checkbox" value="${p.id}"><span class="dot" style="background:${p.color}"></span>${esc(p.nombre)}</label>`).join('');
   fillSel(aTipo,D.tipos.map(t=>[t.id,t.nombre]));
   fillSel(aEst,Object.entries(ESTADOS));fillSel(aCob,Object.entries(COBROS));
-  const a=editA||{proyecto:(fProy.value||rProy.value||cProy.value||D.proyectos.find(p=>p.estado!=='cerrado')?.id||D.proyectos[0].id),tipo:D.tipos[0]?.id,fecha:fecha||hoyISO(),hi:'',hf:'',titulo:'',estado:(fecha||hoyISO())>hoyISO()?'prog':'real',cobro:'pend',cantidad:'',valor:'',factura:'',participantes:'',soporte:'',notas:''};
+  const a=editA||{proyecto:(fProy.value||rProy.value||cProy.value||D.proyectos.find(p=>p.estado!=='cerrado')?.id||D.proyectos[0].id),tipo:D.tipos[0]?.id,fecha:fecha||hoyISO(),hi:'',hf:'',titulo:'',estado:(fecha||hoyISO())<hoyISO()?'real':'prog',cobro:'pend',cantidad:'',valor:'',factura:'',participantes:'',soporte:'',notas:''};
   mActTit.textContent=editA?'Editar actividad':'Nueva actividad';
   setProys(editA?PS(a):[a.proyecto]);aTipo.value=a.tipo;aFecha.value=a.fecha;aHi.value=a.hi;aHf.value=a.hf;aTit.value=a.titulo;
   aEst.value=a.estado;aCob.value=a.cobro;aFac.value=a.factura;aPart.value=a.participantes;aSop.value=a.soporte;aNot.value=a.notas;
@@ -1057,8 +1065,19 @@ function exportCSV(){
 }
 
 /* ===== Render ===== */
+function toggleEjec(id){
+  const a=D.actividades.find(x=>x.id===id);if(!a)return;
+  a.estado=a.estado==='real'?'prog':'real';a.mod=Date.now();
+  save();render();toast(a.estado==='real'?'Ejecutada: pasa al carrito por facturar 🛒':'Marcada como no ejecutada: sale del carrito');
+}
+function porFacturar(){return ACT().filter(a=>a.estado==='real'&&a.cobro==='pend'&&totalA(a)>0)}
+function renderCarrito(){
+  const L=porFacturar(),v=L.reduce((s,a)=>s+totalA(a),0),el=document.getElementById('carrito');if(!el)return;
+  el.innerHTML=`🛒 <b>${L.length}</b> por facturar · ${fmt(v)}`;el.title=`Antes de IVA: ${fmt(v)} · Con IVA 19 %: ${fmt(v*1.19)}`;
+}
+function verCarrito(){vista='cobrar';document.querySelector('#nav button[data-t=actividades]').click()}
 function render(){
-  refreshSelects();
+  refreshSelects();renderCarrito();
   const on=document.querySelector('.tab.on').id;
   if(on==='t-resumen')renderResumen();
   if(on==='t-actividades')renderActs();
