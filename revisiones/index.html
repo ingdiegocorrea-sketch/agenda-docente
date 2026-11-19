@@ -599,6 +599,7 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.sty
 /* ===== Navegación ===== */
 document.getElementById('nav').onclick=e=>{
   const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.t==='actividades'&&!window.__desdeCarrito)vista='todas';window.__desdeCarrito=false;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.id==='t-'+b.dataset.t));
   render();
@@ -773,8 +774,11 @@ function saveAct(){
   const o={proyecto:ids[0],proyectos:ids,tipo:aTipo.value,fecha:aFecha.value,hi:aHi.value,hf:aHf.value,titulo:aTit.value.trim(),estado:aEst.value,cobro:aCob.value,
     cantidad:+aCant.value||0,valor:+aVal.value||0,factura:aFac.value.trim(),participantes:aPart.value.trim(),soporte:aSop.value.trim(),notas:aNot.value.trim()};
   o.mod=Date.now();
-  if(editA)Object.assign(editA,o);else D.actividades.push({id:uid(),creado:Date.now(),...o});
-  save();closeM('mAct');render();toast('Actividad guardada');
+  let nueva;if(editA)Object.assign(editA,o);else{nueva={id:uid(),creado:Date.now(),...o};D.actividades.push(nueva)}
+  save();closeM('mAct');
+  const g=editA||nueva;
+  if(document.getElementById('t-actividades').classList.contains('on')&&!filtradas().includes(g)){vista='todas';limpiarFiltros()}
+  render();toast(g.estado==='prog'?`Guardada: ${fFecha(g.fecha)} · pendiente por realizar`:'Actividad guardada');
 }
 async function borrarAct(){
   if(!editA)return;
@@ -1103,7 +1107,7 @@ function renderCarrito(){
   const L=porFacturar(),v=L.reduce((s,a)=>s+totalA(a),0),el=document.getElementById('carrito');if(!el)return;
   el.innerHTML=`🛒 <b>${L.length}</b> por facturar · ${fmt(v)}`;el.title=`Antes de IVA: ${fmt(v)} · Con IVA 19 %: ${fmt(v*1.19)}`;
 }
-function verCarrito(){vista='cobrar';document.querySelector('#nav button[data-t=actividades]').click()}
+function verCarrito(){window.__desdeCarrito=true;vista='cobrar';document.querySelector('#nav button[data-t=actividades]').click()}
 function render(){
   refreshSelects();renderCarrito();
   const on=document.querySelector('.tab.on').id;
