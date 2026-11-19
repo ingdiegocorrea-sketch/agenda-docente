@@ -429,17 +429,21 @@ function guardarSnapshot(motivo,datos){
   }catch(e){}
 }
 /* --- Combinar dos copias sin borrar nada --- */
+const soloSemilla=d=>!d||!d.actividades||(!d.actividades.length&&![...(d.proyectos||[]),...(d.tipos||[])].some(x=>x.mod));
 function combinar(base,otra){
   if(!otra||!otra.actividades)return base;
   const R=JSON.parse(JSON.stringify(base));
   const mapP={},mapT={};
+  const usado=(k,id)=>(otra.actividades||[]).some(x=>k==='p'?(x.proyecto===id||(x.proyectos||[]).includes(id)):x.tipo===id);
   (otra.proyectos||[]).forEach(p=>{
+    if(!p.mod&&!usado('p',p.id)&&!R.proyectos.some(x=>x.id===p.id)&&!R.proyectos.some(x=>x.nombre.trim().toLowerCase()===String(p.nombre).trim().toLowerCase()))return;
     let m=R.proyectos.find(x=>x.id===p.id)||R.proyectos.find(x=>x.nombre.trim().toLowerCase()===String(p.nombre).trim().toLowerCase());
     if(!m){m=JSON.parse(JSON.stringify(p));R.proyectos.push(m)}
     else if((p.mod||0)>(m.mod||0)){const id=m.id;Object.assign(m,JSON.parse(JSON.stringify(p)),{id})}
     mapP[p.id]=m.id;
   });
   (otra.tipos||[]).forEach(t=>{
+    if(!t.mod&&!usado('t',t.id)&&!R.tipos.some(x=>x.id===t.id))return;
     let m=R.tipos.find(x=>x.id===t.id)||R.tipos.find(x=>x.nombre.trim().toLowerCase()===String(t.nombre).trim().toLowerCase());
     if(!m){m=JSON.parse(JSON.stringify(t));R.tipos.push(m)}
     else if((t.mod||0)>(m.mod||0)){const id=m.id;Object.assign(m,JSON.parse(JSON.stringify(t)),{id})}
@@ -510,7 +514,7 @@ async function ghIniciar(){
   try{
     const remoto=await ghLeer();
     const antes=remoto?JSON.stringify(remoto):'';
-    if(remoto){guardarSnapshot('copia local antes de sincronizar',D);D=combinar(remoto,D);migrar();try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){};render()}
+    if(remoto){guardarSnapshot('copia local antes de sincronizar',D);D=soloSemilla(D)?remoto:combinar(remoto,D);migrar();try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){};render()}
     if(JSON.stringify(D)!==antes)await ghEscribir();
     nubeOK=true;setSync('Sincronizado ✓','ok');
   }catch(e){nubeOK=false;setSync('GitHub sin conexión ('+e.code+') – guardado aquí','bad')}
@@ -542,7 +546,7 @@ async function iniciarNube(){
       if(nube&&nube.proyectos&&nube.actividades){
         guardarSnapshot('copia local antes de sincronizar',D);
         const antes=JSON.stringify(nube);
-        D=combinar(nube,D);migrar();
+        D=soloSemilla(D)?JSON.parse(JSON.stringify(nube)):combinar(nube,D);migrar();
         try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}
         render();
         if(ART&&JSON.stringify(D)!==antes){nubeOK=true;syncPend=true;subir();return}
@@ -1032,7 +1036,7 @@ function descargar(nom,txt,mime){const b=new Blob([txt],{type:mime});const a=doc
 function backup(){guardarArchivo(`respaldo-revisiones-${hoyISO()}.json`,JSON.stringify(D,null,1),'application/json')}
 function restore(inp){
   const f=inp.files[0];if(!f)return;const r=new FileReader();
-  r.onload=async()=>{let d;try{d=JSON.parse(r.result);if(!d.proyectos||!d.actividades)throw 0}catch(e){toast('Archivo no válido');return}const n0=D.actividades.length;guardarSnapshot('antes de cargar respaldo');D=combinar(D,d);save();render();toast(`Respaldo combinado: ${D.actividades.length-n0} actividades recuperadas`)};
+  r.onload=async()=>{let d;try{d=JSON.parse(r.result);if(!d.proyectos||!d.actividades)throw 0}catch(e){toast('Archivo no válido');return}const n0=D.actividades.length;guardarSnapshot('antes de cargar respaldo');D=soloSemilla(D)?d:combinar(D,d);save();render();toast(`Respaldo combinado: ${D.actividades.length-n0} actividades recuperadas`)};
   r.readAsText(f);inp.value='';
 }
 function exportCSV(){
