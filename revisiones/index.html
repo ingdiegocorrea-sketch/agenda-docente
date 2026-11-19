@@ -688,7 +688,7 @@ function filtradas(){
 function renderActs(){
   vistas.innerHTML=VISTAS.map(v=>`<button class="chip ${v[0]===vista?'on':''}" onclick="setVista('${v[0]}')">${v[1]}<b>${(v[0]==='anul'?VIVAS():ACT()).filter(v[2]).length}</b></button>`).join('');
   const L=filtradas();
-  tAct.innerHTML=`<tr><th>Fecha</th><th>Horario</th><th>Proyecto</th><th>Tipo</th><th>Título / soporte</th><th>¿Ejecutada?</th><th>Cobro</th><th class="n">Cant.</th><th class="n">V. unit.</th><th class="n">Total</th><th></th></tr>`+
+  tAct.innerHTML=`<tr><th>Fecha</th><th>Horario</th><th>Proyecto</th><th>Tipo</th><th>Título / soporte</th><th>¿Ejecutada?</th><th class="n">V. unit.</th><th class="n">Total</th><th></th></tr>`+
    (L.length?L.map(a=>`<tr class="${esVencida(a)?'venc':''}" style="cursor:pointer" onclick="openAct('${a.id}')">
     <td style="white-space:nowrap">${fFecha(a.fecha)}</td><td style="white-space:nowrap">${a.hi||''}${a.hf?'–'+a.hf:''}</td>
     <td>${PS(a).map(id=>`<div><span class="dot" style="background:${P(id).color}"></span>${esc(P(id).nombre)}</div>`).join('')}${PS(a).length>1?`<div class="muted" style="font-size:11px">Compartida: ${fmt(totalA(a)/PS(a).length)} c/u</div>`:''}</td>
@@ -696,9 +696,8 @@ function renderActs(){
     <td>${esc(a.titulo)}${a.soporte?`<div class="muted" style="font-size:12px">${esc(a.soporte)}</div>`:''}</td>
     <td>${a.estado==='canc'||a.anulada?`<span class="pill p-${a.estado}">${ESTADOS[a.estado]}</span>`:
       `<button class="ejec ${a.estado==='real'?'si':''}" onclick="event.stopPropagation();toggleEjec('${a.id}')" title="Marca si la actividad ya se ejecutó">${a.estado==='real'?'✓ Ejecutada':'○ ¿Ejecutada?'}</button>`}${esVencida(a)?'<div><span class="pill p-venc">Vencida: ¿se realizó?</span></div>':''}${a.estado==='real'&&a.cobro==='pend'&&!a.anulada&&totalA(a)>0?'<div><span class="pill p-carrito">🛒 Por facturar</span></div>':''}</td>
-    <td><span class="pill p-${a.cobro}">${COBROS[a.cobro]}</span>${a.factura?`<div class="muted" style="font-size:11px">${esc(a.factura)}</div>`:''}</td>
-    <td class="n">${fmtH(a.cantidad)} ${T(a.tipo).unidad==='hora'?'h':'ev'}</td><td class="n">${fmt(a.valor)}</td><td class="n"><strong>${fmt(totalA(a))}</strong></td><td class="n"><button class="btn sec sm" title="Eliminar" aria-label="Eliminar" onclick="event.stopPropagation();editA=D.actividades.find(x=>x.id==='${a.id}');borrarAct()">🗑</button></td></tr>`).join('')
-   :`<tr><td colspan="11" class="muted" style="text-align:center;padding:24px">${D.actividades.length?'Ninguna actividad coincide con esta vista o filtros. <a href="#" onclick="limpiarFiltros();setVista(\'todas\');return false">Ver todas</a>':'No hay actividades. Usa «+ Nueva actividad».'}</td></tr>`);
+    <td class="n">${fmt(a.valor)}</td><td class="n"><strong>${fmt(totalA(a))}</strong></td><td class="n"><button class="btn sec sm" title="Eliminar" aria-label="Eliminar" onclick="event.stopPropagation();editA=D.actividades.find(x=>x.id==='${a.id}');borrarAct()">🗑</button></td></tr>`).join('')
+   :`<tr><td colspan="9" class="muted" style="text-align:center;padding:24px">${D.actividades.length?'Ninguna actividad coincide con esta vista o filtros. <a href="#" onclick="limpiarFiltros();setVista(\'todas\');return false">Ver todas</a>':'No hay actividades. Usa «+ Nueva actividad».'}</td></tr>`);
   etiquetar(tAct);
   const filtrosOn=[fTxt,fProy,fTipo,fEst,fCob,fDesde,fHasta].some(e=>e.value);
   tActTot.innerHTML=`${L.length} de ${ACT().length} actividades${filtrosOn?' <span class="muted" style="font-weight:400">(hay filtros activos)</span>':''} · Total: ${fmt(L.reduce((s,a)=>s+totalA(a),0))}`;
