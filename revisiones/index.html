@@ -298,6 +298,7 @@ label.falta{color:var(--bad)}label.falta input,label.falta select{border-color:#
   <div class="row" style="margin-top:14px;align-items:center">
     <div class="total-box">Total: <strong id="aTot">$0</strong></div>
     <button class="btn bad sm" id="aDel" onclick="delAct()">Anular</button>
+    <button class="btn sec sm" id="aBorrar" onclick="borrarAct()" style="color:var(--bad);border-color:#f0c9c4">🗑 Eliminar</button>
     <button class="btn sec sm" id="aDup" onclick="dupAct()">Duplicar</button>
     <span class="right"></span>
     <button class="btn sec" onclick="closeM('mAct')">Cancelar</button>
@@ -345,7 +346,7 @@ label.falta{color:var(--bad)}label.falta input,label.falta select{border-color:#
 </div></div>
 
 <div class="mb" id="mDlg"><div class="modal" style="width:min(440px,100%)">
-  <p id="dlgMsg" style="font-size:15px;margin-top:0"></p>
+  <p id="dlgMsg" style="font-size:15px;margin-top:0;white-space:pre-line"></p>
   <input id="dlgIn" style="width:100%;display:none;margin-bottom:12px">
   <div class="row"><span class="right"></span><button class="btn sec" id="dlgNo">Cancelar</button><button class="btn" id="dlgSi">Aceptar</button></div>
 </div></div>
@@ -559,7 +560,8 @@ window.addEventListener('beforeunload',e=>{if(syncPend){subir();e.preventDefault
 const P=id=>D.proyectos.find(p=>p.id===id)||{nombre:'(sin proyecto)',color:'#999',tarifas:{}};
 const T=id=>D.tipos.find(t=>t.id===id)||{nombre:'(sin tipo)',color:'#999',unidad:'evento',tarifa:0};
 function tarifa(pid,tid){const p=P(pid);const v=p.tarifas&&p.tarifas[tid];return (v!==undefined&&v!==''&&v!==null)?+v:+T(tid).tarifa||0}
-const ACT=()=>D.actividades.filter(a=>!a.anulada);
+const VIVAS=()=>D.actividades.filter(a=>!a.eliminada);
+const ACT=()=>VIVAS().filter(a=>!a.anulada);
 const PS=a=>(a.proyectos&&a.proyectos.length?a.proyectos:[a.proyecto]).filter(Boolean);
 const enP=(a,pid)=>PS(a).includes(pid);
 const parte=(a,pid)=>pid?totalA(a)/Math.max(1,PS(a).length):totalA(a);
@@ -669,7 +671,7 @@ function filtradas(){
   const q=fTxt.value.trim().toLowerCase();
   const vf=(VISTAS.find(v=>v[0]===vista)||VISTAS[0])[2];
   const asc=fOrd.value==='asc';
-  return (vista==='anul'?D.actividades:ACT()).filter(vf).filter(a=>
+  return (vista==='anul'?VIVAS():ACT()).filter(vf).filter(a=>
     (!fProy.value||enP(a,fProy.value))&&(!fTipo.value||a.tipo===fTipo.value)&&
     (!fEst.value||a.estado===fEst.value)&&(!fCob.value||a.cobro===fCob.value)&&
     (!fDesde.value||a.fecha>=fDesde.value)&&(!fHasta.value||a.fecha<=fHasta.value)&&
@@ -677,9 +679,9 @@ function filtradas(){
   ).sort((a,b)=>{const x=(a.fecha+(a.hi||'')).localeCompare(b.fecha+(b.hi||''));return asc?x:-x});
 }
 function renderActs(){
-  vistas.innerHTML=VISTAS.map(v=>`<button class="chip ${v[0]===vista?'on':''}" onclick="setVista('${v[0]}')">${v[1]}<b>${(v[0]==='anul'?D.actividades:ACT()).filter(v[2]).length}</b></button>`).join('');
+  vistas.innerHTML=VISTAS.map(v=>`<button class="chip ${v[0]===vista?'on':''}" onclick="setVista('${v[0]}')">${v[1]}<b>${(v[0]==='anul'?VIVAS():ACT()).filter(v[2]).length}</b></button>`).join('');
   const L=filtradas();
-  tAct.innerHTML=`<tr><th>Fecha</th><th>Horario</th><th>Proyecto</th><th>Tipo</th><th>Título / soporte</th><th>Estado</th><th>Cobro</th><th class="n">Cant.</th><th class="n">V. unit.</th><th class="n">Total</th></tr>`+
+  tAct.innerHTML=`<tr><th>Fecha</th><th>Horario</th><th>Proyecto</th><th>Tipo</th><th>Título / soporte</th><th>Estado</th><th>Cobro</th><th class="n">Cant.</th><th class="n">V. unit.</th><th class="n">Total</th><th></th></tr>`+
    (L.length?L.map(a=>`<tr class="${esVencida(a)?'venc':''}" style="cursor:pointer" onclick="openAct('${a.id}')">
     <td style="white-space:nowrap">${fFecha(a.fecha)}</td><td style="white-space:nowrap">${a.hi||''}${a.hf?'–'+a.hf:''}</td>
     <td>${PS(a).map(id=>`<div><span class="dot" style="background:${P(id).color}"></span>${esc(P(id).nombre)}</div>`).join('')}${PS(a).length>1?`<div class="muted" style="font-size:11px">Compartida: ${fmt(totalA(a)/PS(a).length)} c/u</div>`:''}</td>
@@ -687,8 +689,8 @@ function renderActs(){
     <td>${esc(a.titulo)}${a.soporte?`<div class="muted" style="font-size:12px">${esc(a.soporte)}</div>`:''}</td>
     <td><span class="pill p-${a.estado}">${ESTADOS[a.estado]}</span>${esVencida(a)?'<div><span class="pill p-venc">Vencida: ¿se realizó?</span></div>':''}</td>
     <td><span class="pill p-${a.cobro}">${COBROS[a.cobro]}</span>${a.factura?`<div class="muted" style="font-size:11px">${esc(a.factura)}</div>`:''}</td>
-    <td class="n">${fmtH(a.cantidad)} ${T(a.tipo).unidad==='hora'?'h':'ev'}</td><td class="n">${fmt(a.valor)}</td><td class="n"><strong>${fmt(totalA(a))}</strong></td></tr>`).join('')
-   :`<tr><td colspan="10" class="muted" style="text-align:center;padding:24px">${D.actividades.length?'Ninguna actividad coincide con esta vista o filtros. <a href="#" onclick="limpiarFiltros();setVista(\'todas\');return false">Ver todas</a>':'No hay actividades. Usa «+ Nueva actividad».'}</td></tr>`);
+    <td class="n">${fmtH(a.cantidad)} ${T(a.tipo).unidad==='hora'?'h':'ev'}</td><td class="n">${fmt(a.valor)}</td><td class="n"><strong>${fmt(totalA(a))}</strong></td><td class="n"><button class="btn sec sm" title="Eliminar" aria-label="Eliminar" onclick="event.stopPropagation();editA=D.actividades.find(x=>x.id==='${a.id}');borrarAct()">🗑</button></td></tr>`).join('')
+   :`<tr><td colspan="11" class="muted" style="text-align:center;padding:24px">${D.actividades.length?'Ninguna actividad coincide con esta vista o filtros. <a href="#" onclick="limpiarFiltros();setVista(\'todas\');return false">Ver todas</a>':'No hay actividades. Usa «+ Nueva actividad».'}</td></tr>`);
   etiquetar(tAct);
   const filtrosOn=[fTxt,fProy,fTipo,fEst,fCob,fDesde,fHasta].some(e=>e.value);
   tActTot.innerHTML=`${L.length} de ${ACT().length} actividades${filtrosOn?' <span class="muted" style="font-weight:400">(hay filtros activos)</span>':''} · Total: ${fmt(L.reduce((s,a)=>s+totalA(a),0))}`;
@@ -719,7 +721,7 @@ function openAct(id,fecha,pre){
   }
   if(!editA){const h=horasDe(aHi.value,aHf.value);aCant.value=T(aTipo.value).unidad==='evento'?1:(h??'');aVal.value=tarifa(aProy.value,aTipo.value)}
   marcarFaltantes(pre);
-  aDel.style.display=aDup.style.display=editA?'':'none';
+  aDel.style.display=aDup.style.display=aBorrar.style.display=editA?'':'none';
   aDel.textContent=editA&&editA.anulada?'Restaurar':'Anular';aDel.className='btn sm '+(editA&&editA.anulada?'ok':'bad');
   updUni();calcTot();mAct.classList.add('on');aTit.focus();
 }
@@ -756,6 +758,14 @@ function saveAct(){
   o.mod=Date.now();
   if(editA)Object.assign(editA,o);else D.actividades.push({id:uid(),creado:Date.now(),...o});
   save();closeM('mAct');render();toast('Actividad guardada');
+}
+async function borrarAct(){
+  if(!editA)return;
+  const desc=`${fFecha(editA.fecha)} · ${T(editA.tipo).nombre} · ${editA.titulo||''}`;
+  if(!await confirmar(`¿Eliminar definitivamente esta actividad?\n${desc}\n\nDesaparece de la lista, del calendario y de los cortes, en todos tus equipos. Si solo quieres sacarla del cobro, usa «Anular».`))return;
+  const id=editA.id,i=D.actividades.indexOf(editA);
+  D.actividades[i]={id,eliminada:true,mod:Date.now(),proyecto:editA.proyecto,tipo:editA.tipo,fecha:editA.fecha,titulo:''};
+  save();closeM('mAct');render();toast('Actividad eliminada');
 }
 async function delAct(){
   if(!editA)return;
