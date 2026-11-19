@@ -901,7 +901,7 @@ function toggleMic(){
   }
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
   if(escuchando&&REC){REC.stop();return}
-  REC=new SR();REC.lang='es-CO';REC.continuous=true;REC.interimResults=true;
+  REC=new SR();REC.lang='es-CO';REC.continuous=!/Android/i.test(navigator.userAgent);REC.interimResults=true;
   REC.onresult=e=>{let fin='',par='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t;else par+=t}
     if(fin)vozTxt.value=(vozTxt.value?vozTxt.value.trimEnd()+' ':'')+fin.trim();vozParcial.textContent=par};
   REC.onend=()=>{escuchando=false;vozParcial.textContent='';pintarMic()};
@@ -909,12 +909,13 @@ function toggleMic(){
   try{REC.start();escuchando=true;pintarMic()}catch(e){}
 }
 function abrirVoz(){vozTxt.value='';vozParcial.textContent='';mVoz.classList.add('on');pintarMic()}
-async function procesarVoz(){
-  if(escuchando){if(DIC)await DIC.stop();else if(REC)REC.stop()}
+async function procesarVoz(){try{await procesarVoz2()}catch(e){toast('No se pudo interpretar; revisa los datos a mano');btnInterp.disabled=false;btnInterp.textContent='Interpretar y revisar'}}
+async function procesarVoz2(){
+  if(escuchando){try{if(DIC)await Promise.race([DIC.stop(),new Promise(r=>setTimeout(r,3000))]);else if(REC)REC.stop()}catch(e){}}
   const txt=vozTxt.value.trim();if(!txt){toast('Dicta o escribe la actividad');return}
   btnInterp.disabled=true;btnInterp.textContent='Interpretando…';
   const loc=interpretarLocal(txt);
-  const ia=await interpretarIA(txt);
+  let ia=null;try{ia=await Promise.race([interpretarIA(txt),new Promise(r=>setTimeout(()=>r(null),12000))])}catch(e){ia=null}
   btnInterp.disabled=false;btnInterp.textContent='Interpretar y revisar';
   const r=Object.assign({},loc,ia||{});
   r.notas=[r.notas,'Dictado: '+txt].filter(Boolean).join('\n');
