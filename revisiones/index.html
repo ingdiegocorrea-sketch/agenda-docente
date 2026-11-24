@@ -1110,8 +1110,9 @@ function renderResp(){if(!document.getElementById('tResp'))return;
 }
 function recuperar(i){const s=snapshots()[i];if(!s)return;const n0=D.actividades.length;D=combinar(D,s.data);save();render();toast(`${D.actividades.length-n0} actividades recuperadas`)}
 function renderConfig(){renderGH();
-  tProy.innerHTML='<tr><th>Proyecto</th><th>Código / contrato</th><th>Cliente</th><th>Estado</th><th class="n">Actividades</th><th class="n">Causado</th><th></th></tr>'+
-   D.proyectos.map(p=>{const R=ACT().filter(a=>enP(a,p.id));return `<tr><td><span class="dot" style="background:${p.color}"></span>${esc(p.nombre)}</td><td>${esc(p.codigo)}</td><td>${esc(p.cliente)}</td><td>${p.estado==='cerrado'?'Cerrado':'Activo'}</td><td class="n">${R.length}</td><td class="n">${fmt(R.filter(a=>a.estado==='real').reduce((s,a)=>s+parte(a,p.id),0))}</td><td><button class="btn sec sm" onclick="openProy('${p.id}')">Editar</button></td></tr>`}).join('');
+  const mesC=hoyISO().slice(0,7),nm=nomMes(mesC);
+  tProy.innerHTML=`<tr><th>Proyecto</th><th>Código / contrato</th><th>Cliente</th><th>Estado</th><th class="n">Ejecutadas · ${nm}</th><th class="n">Valor ejecutado · ${nm}</th><th></th></tr>`+
+   D.proyectos.map(p=>{const R=ACT().filter(a=>enP(a,p.id)&&a.estado==='real'&&(a.fecha||'').slice(0,7)===mesC);return `<tr><td><span class="dot" style="background:${p.color}"></span>${esc(p.nombre)}</td><td>${esc(p.codigo)}</td><td>${esc(p.cliente)}</td><td>${p.estado==='cerrado'?'Cerrado':'Activo'}</td><td class="n">${R.length}</td><td class="n">${fmt(R.filter(a=>a.estado==='real').reduce((s,a)=>s+parte(a,p.id),0))}</td><td><button class="btn sec sm" onclick="openProy('${p.id}')">Editar</button></td></tr>`}).join('');
   tTipo.innerHTML='<tr><th>Tipo</th><th>Unidad</th><th class="n">Tarifa base</th><th></th></tr>'+
    D.tipos.map(t=>`<tr><td><span class="dot" style="background:${t.color}"></span>${esc(t.nombre)}</td><td>${t.unidad==='hora'?'Por hora':'Por evento'}</td><td class="n">${fmt(t.tarifa)}</td><td><button class="btn sec sm" onclick="openTipo('${t.id}')">Editar</button></td></tr>`).join('');
 }
