@@ -313,13 +313,8 @@ button{color:#1d2433}
     <div id="ghBox"></div>
   </div>
   <div class="card">
-    <h2>Copias automáticas de este dispositivo</h2>
-    <p class="muted" style="margin-top:0;font-size:12px">Cada cambio queda guardado aquí. «Recuperar» agrega a la lista las actividades de esa copia que falten; no borra ni reemplaza nada.</p>
-    <div class="tw"><table id="tResp" class="resp"></table></div>
-  </div>
-  <div class="card">
     <h2>Respaldo de datos</h2>
-    <p class="muted" style="margin-top:0;font-size:12px">Cargar un respaldo <strong>combina</strong> sus actividades con las actuales: nunca borra nada. Además, la app guarda copias automáticas en este dispositivo.</p>
+    <p class="muted" style="margin-top:0;font-size:12px">Cargar un respaldo <strong>combina</strong> sus actividades con las actuales: nunca borra nada.</p>
     <div class="row">
       <button class="btn" onclick="backup()">Descargar respaldo (.json)</button>
       <label class="btn sec" style="flex-direction:row;cursor:pointer">Cargar respaldo<input type="file" accept=".json" style="display:none" onchange="restore(this)"></label>
@@ -1105,7 +1100,7 @@ async function imprimirCorte(){
 }
 
 /* ===== Configuración ===== */
-function renderResp(){
+function renderResp(){if(!document.getElementById('tResp'))return;
   const s=snapshots();
   tResp.innerHTML='<tr><th>Fecha y hora</th><th>Motivo</th><th class="n">Actividades</th><th class="n">Faltan hoy</th><th></th></tr>'+
    (s.length?s.map((x,i)=>{const ids=new Set(D.actividades.map(a=>a.id));const falt=x.data.actividades.filter(a=>!ids.has(a.id)).length;
@@ -1114,8 +1109,7 @@ function renderResp(){
   if(s.length)etiquetar(tResp);
 }
 function recuperar(i){const s=snapshots()[i];if(!s)return;const n0=D.actividades.length;D=combinar(D,s.data);save();render();toast(`${D.actividades.length-n0} actividades recuperadas`)}
-function renderConfig(){
-  renderResp();renderGH();
+function renderConfig(){renderGH();
   tProy.innerHTML='<tr><th>Proyecto</th><th>Código / contrato</th><th>Cliente</th><th>Estado</th><th class="n">Actividades</th><th class="n">Causado</th><th></th></tr>'+
    D.proyectos.map(p=>{const R=ACT().filter(a=>enP(a,p.id));return `<tr><td><span class="dot" style="background:${p.color}"></span>${esc(p.nombre)}</td><td>${esc(p.codigo)}</td><td>${esc(p.cliente)}</td><td>${p.estado==='cerrado'?'Cerrado':'Activo'}</td><td class="n">${R.length}</td><td class="n">${fmt(R.filter(a=>a.estado==='real').reduce((s,a)=>s+parte(a,p.id),0))}</td><td><button class="btn sec sm" onclick="openProy('${p.id}')">Editar</button></td></tr>`}).join('');
   tTipo.innerHTML='<tr><th>Tipo</th><th>Unidad</th><th class="n">Tarifa base</th><th></th></tr>'+
