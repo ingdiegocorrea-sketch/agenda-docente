@@ -343,7 +343,7 @@ button{color:#1d2433}
     <label>Hora fin<input type="time" id="aHf"></label>
     <label>Estado<select id="aEst"></select></label>
     <label><span>Cantidad (<span id="aUni">h</span>)</span><input type="number" step="0.25" min="0" id="aCant"></label>
-    <label>Valor unitario (antes de IVA)<input type="number" step="1000" min="0" id="aVal"></label>
+    <label>Valor unitario<input type="number" step="1000" min="0" id="aVal"></label>
     <label>Cobro<select id="aCob"></select></label>
     <label>N° factura / cuenta<input id="aFac"></label>
     <div class="c4 repbox" id="repBox">
@@ -1070,7 +1070,7 @@ function renderCortes(){
   tCorte.innerHTML=L.length?tablaCorte(L):'<tr><td class="muted" style="text-align:center;padding:24px">No hay actividades realizadas para este corte.</td></tr>';
   if(L.length)etiquetar(tCorte);
   const sub=L.reduce((s,a)=>s+parte(a,kProy.value),0);
-  corteTot.innerHTML=`<div style="font-weight:400;font-size:14px">Valor del corte (antes de IVA): <strong>${fmt(sub)}</strong> · IVA 19 %: <strong>${fmt(sub*0.19)}</strong></div>Total con IVA: ${fmt(sub*1.19)}`;
+  corteTot.innerHTML=`Valor total del corte: ${fmt(sub)}`;
   saldos.innerHTML='<table><tr><th>Proyecto</th><th class="n">Causado</th><th class="n">Pendiente</th><th class="n">Facturado</th><th class="n">Pagado</th><th class="n">Tope</th><th class="n">% del tope</th></tr>'+
    D.proyectos.map(p=>{const R=ACT().filter(a=>enP(a,p.id)&&a.estado==='real');const s=f=>R.filter(f).reduce((x,a)=>x+parte(a,p.id),0);
     const tot=s(()=>true),pc=p.tope?tot/p.tope*100:null;
@@ -1093,12 +1093,10 @@ async function imprimirCorte(){
    <strong>Periodo:</strong> ${m?MESES[+m-1]+' de '+y:'Todo'} · <strong>Elaborado por:</strong> Ing. Diego Correa Alvarado · BIMP · <strong>Fecha:</strong> ${fFecha(hoyISO())}</p>
    <table border="1" style="border-collapse:collapse;width:100%">${tablaCorte(L,true)}</table>
    ${kProy.value?'':(()=>{const pp={};L.forEach(a=>PS(a).forEach(id=>{pp[id]=(pp[id]||0)+totalA(a)/PS(a).length}));
-     return `<h3>Resumen por proyecto</h3><table border="1" style="border-collapse:collapse;width:60%"><tr><th>Proyecto</th><th class="n">Valor (antes de IVA)</th></tr>${Object.entries(pp).map(([id,v])=>`<tr><td>${esc(P(id).nombre)}</td><td class="n">${fmt(v)}</td></tr>`).join('')}</table>`})()}
+     return `<h3>Resumen por proyecto</h3><table border="1" style="border-collapse:collapse;width:60%"><tr><th>Proyecto</th><th class="n">Valor</th></tr>${Object.entries(pp).map(([id,v])=>`<tr><td>${esc(P(id).nombre)}</td><td class="n">${fmt(v)}</td></tr>`).join('')}</table>`})()}
    <h3>Resumen por tipo</h3><table border="1" style="border-collapse:collapse;width:60%"><tr><th>Tipo</th><th class="n">Cant.</th><th class="n">Valor</th></tr>
    ${Object.entries(porT).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${v.k}</td><td class="n">${fmt(v.v)}</td></tr>`).join('')}
-   <tr><th>Valor del corte (antes de IVA)</th><th class="n">${L.length}</th><th class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0))}</th></tr>
-   <tr><td>IVA 19 %</td><td></td><td class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0)*0.19)}</td></tr>
-   <tr><th>TOTAL CON IVA</th><th></th><th class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0)*1.19)}</th></tr></table>
+   <tr><th>VALOR TOTAL</th><th class="n">${L.length}</th><th class="n">${fmt(L.reduce((s,a)=>s+parte(a,kProy.value),0))}</th></tr></table>
    <br><br><br><p>_______________________________<br>Ing. Diego Correa Alvarado</p>`;
   if(enClaude()){
     const doc=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Corte ${kProy.value?esc(p.nombre):'todos los proyectos'} ${kMes.value}</title><style>body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;padding:16px;color:#1d2433}th,td{padding:5px 6px;text-align:left}.n{text-align:right}th{background:#eef1f5}.pill{font-weight:600}</style></head><body>${printArea.innerHTML}<script>setTimeout(()=>print(),400)<\/script></body></html>`;
@@ -1192,7 +1190,7 @@ function toggleEjec(id){
 function porFacturar(){return ACT().filter(a=>a.estado==='real'&&a.cobro==='pend'&&totalA(a)>0)}
 function renderCarrito(){
   const L=porFacturar(),v=L.reduce((s,a)=>s+totalA(a),0),el=document.getElementById('carrito');if(!el)return;
-  el.innerHTML=`🛒 <b>${L.length}</b> por facturar · ${fmt(v)}`;el.title=`Antes de IVA: ${fmt(v)} · Con IVA 19 %: ${fmt(v*1.19)}`;
+  el.innerHTML=`🛒 <b>${L.length}</b> por facturar · ${fmt(v)}`;el.title=`Valor total por facturar: ${fmt(v)}`;
 }
 function verCarrito(){window.__desdeCarrito=true;vista='cobrar';mesAct='';document.querySelector('#nav button[data-t=actividades]').click()}
 function render(){
